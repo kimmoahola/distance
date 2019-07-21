@@ -1,3 +1,7 @@
+import datetime
+import sqlite3
+import pytz
+
 import RPi.GPIO as GPIO
 import time
 import argparse
@@ -28,6 +32,10 @@ GPIO_TRIGGER = 15
 GPIO_ECHO = 14
 TRIGGER_TIME = 0.00001
 MAX_TIME = 0.04  # max time waiting for response in case something is missed
+
+
+def get_now():
+    return datetime.datetime.utcnow().replace(tzinfo=pytz.utc, microsecond=0)
 
 
 def setup_measure():
@@ -147,11 +155,8 @@ def email(addresses, subject, message):
         send_email(address, mime_text)
 
 
-def result_str(distance):
+def result_str(distance, calibrated, water_level):
     if distance > -1:
-        calibrated = distance + SENSOR_CALIBRATION
-        water_level = -calibrated - SENSOR_FROM_CELLING_CM
-
         msg = ''
 
         for report_distance in REPORT_DISTANCES:
@@ -170,6 +175,38 @@ def result_str(distance):
         return "No distance"
 
 
+def init_sqlite(c, table_name):
+    c.execute("""CREATE TABLE IF NOT EXISTS %s
+                  (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      ts DATETIME NOT NULL,
+                      water_level DECIMAL(6,2) NOT NULL
+                  )""" % table_name)
+
+
+def write_to_sqlite(file_name, table_name, ts, water_level):
+    conn = sqlite3.connect(file_name)
+    c = conn.cursor()
+
+    init_sqlite(c, table_name)
+
+    c.execute('INSERT INTO %s (ts, water_level) VALUES (?, ?)' % table_name, (ts, water_level))
+
+    conn.commit()
+    conn.close()
+
+
+def calc_water_level(distance):
+    if distance > -1:
+        calibrated = distance + SENSOR_CALIBRATION
+        water_level = -calibrated - SENSOR_FROM_CELLING_CM
+    else:
+        calibrated = 0
+        water_level = 0
+
+    return calibrated, water_level
+
+
 def main():
 
     parser = argparse.ArgumentParser(description='Read distance')
@@ -177,18 +214,23 @@ def main():
                         help='Email address to send alerts. --address can be given multiple times.')
     args = parser.parse_args()
 
+    distance = read_n_and_take_middle_value(1000)
+    GPIO.cleanup()
+    calibrated, water_level = calc_water_level(distance)
+    write_to_sqlite('db.sqlite', 'water_level', get_now(), water_level)
+
     if args.address:
-        distance = read_n_and_take_middle_value(1000)
-        GPIO.cleanup()
-        email(args.address, 'Distance', result_str(distance))
-    else:
-        try:
-            while True:
-                distance = read_n_and_take_middle_value(300)
-                print(result_str(distance))
-                time.sleep(5)
-        except KeyboardInterrupt:
-            GPIO.cleanup()
+        email(args.address, 'Distance', result_str(distance, calibrated, water_level))
+
+    # else:
+    #     try:
+    #         while True:
+    #             distance = read_n_and_take_middle_value(300)
+    #             calibrated, water_level = calc_water_level(distance)
+    #             print(result_str(distance, calibrated, water_level))
+    #             time.sleep(5)
+    #     except KeyboardInterrupt:
+    #         GPIO.cleanup()
 
 
 if __name__ == '__main__':
