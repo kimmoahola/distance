@@ -4,6 +4,7 @@ import smtplib
 import sqlite3
 import time
 import warnings
+from decimal import Decimal, ROUND_HALF_UP
 from email.mime.text import MIMEText
 
 import arrow
@@ -177,6 +178,16 @@ def result_str(distance, calibrated, water_level):
         return "No distance"
 
 
+def decimal_round(value, decimals=1):
+
+    if not isinstance(value, Decimal):
+        value = Decimal(value)
+
+    rounder = '.' + ('0' * (decimals - 1)) + '1'
+
+    return value.quantize(Decimal(rounder), rounding=ROUND_HALF_UP)
+
+
 def init_sqlite(c, table_name):
     c.execute("""CREATE TABLE IF NOT EXISTS %s
                   (
@@ -192,7 +203,7 @@ def write_to_sqlite(file_name, table_name, ts, water_level):
 
     init_sqlite(c, table_name)
 
-    c.execute('INSERT INTO %s (ts, water_level) VALUES (?, ?)' % table_name, (ts, water_level))
+    c.execute('INSERT INTO %s (ts, water_level) VALUES (?, ?)' % table_name, (ts, decimal_round(water_level)))
 
     conn.commit()
     conn.close()
