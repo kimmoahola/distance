@@ -262,17 +262,18 @@ def main():
                         help='Email address to send alerts. --address can be given multiple times.')
     args = parser.parse_args()
 
-    # distance = read_n_and_take_middle_value(1000)
-    # GPIO.cleanup()
-    # calibrated, water_level = calc_water_level(distance)
-    # write_to_sqlite('db.sqlite', 'water_level', get_now(), water_level)
-    #
+    distance = read_n_and_take_middle_value(1000)
+    GPIO.cleanup()
+    calibrated, water_level = calc_water_level(distance)
+    now = get_now()
+    write_to_sqlite('db.sqlite', 'water_level', now, water_level)
+
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
-    #
 
-    start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
-    write_to_sheet(sqlite_get_rows_after_ts('db.sqlite', 'water_level', start_ts))
+    if now.hour in (6, 12, 18) and now.minute < 10:
+        start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
+        write_to_sheet(sqlite_get_rows_after_ts('db.sqlite', 'water_level', start_ts))
 
     # else:
     #     try:
