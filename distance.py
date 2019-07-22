@@ -249,7 +249,7 @@ def write_to_sheet(rows):
     # Update a cell with value (just to let him know values is updated ;) )
     wks.update_value('A1', "Hey yank this numpy array")
 
-    sheet_rows = list(map(lambda x: [x['ts'], x['water_level']], rows))
+    sheet_rows = reversed(list(map(lambda x: [x['ts'], x['water_level']], rows)))
 
     if sheet_rows:
         wks.update_values('A2', sheet_rows)
