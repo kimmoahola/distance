@@ -33,6 +33,8 @@ GPIO_ECHO = 14
 TRIGGER_TIME = 0.00001
 MAX_TIME = 0.04  # max time waiting for response in case something is missed
 
+TARGET_TIMEZONE = 'Europe/Helsinki'
+
 
 def get_now():
     return datetime.datetime.utcnow().replace(tzinfo=pytz.utc, microsecond=0)
@@ -200,6 +202,17 @@ def datetime_to_utc_string_datetime(ts_str):
     return arrow.get(ts_str).to('utc').format('YYYY-MM-DDTHH:mm:ssZZ')  # 2016-09-21T08:50:28+00:00
 
 
+def utc_string_datetime_to_local_string_datetime(utc_string_datetime):
+    local_aware = utc_string_datetime_to_local_arrow(utc_string_datetime)
+    return local_aware.format('YYYY-MM-DD HH:mm')
+
+
+def utc_string_datetime_to_local_arrow(utc_string_datetime):
+    utc_aware = arrow.get(utc_string_datetime)
+    local_aware = utc_aware.to(TARGET_TIMEZONE)
+    return local_aware
+
+
 def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
     conn = sqlite3.connect(file_name)
     cursor = conn.cursor()
@@ -210,7 +223,7 @@ def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
 
     conn.close()
 
-    rows = map(lambda x: {'water_level': x[1], 'ts': datetime_to_utc_string_datetime(x[0])}, sqlite_rows)
+    rows = map(lambda x: {'water_level': x[1], 'ts': utc_string_datetime_to_local_string_datetime(x[0])}, sqlite_rows)
 
     return rows
 
