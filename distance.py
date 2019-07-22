@@ -196,6 +196,10 @@ def write_to_sqlite(file_name, table_name, ts, water_level):
     conn.close()
 
 
+def datetime_to_utc_string_datetime(ts_str):
+    return arrow.get(ts_str).to('utc').format('YYYY-MM-DDTHH:mm:ssZZ')  # 2016-09-21T08:50:28+00:00
+
+
 def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
     conn = sqlite3.connect(file_name)
     cursor = conn.cursor()
@@ -205,9 +209,6 @@ def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
     sqlite_rows = cursor.fetchall()
 
     conn.close()
-
-    def datetime_to_utc_string_datetime(ts_str):
-        return arrow.get(ts_str).to('utc').format('YYYY-MM-DDTHH:mm:ssZZ')  # 2016-09-21T08:50:28+00:00
 
     rows = map(lambda x: {'water_level': x[2], 'ts': datetime_to_utc_string_datetime(x[1])}, sqlite_rows)
 
@@ -257,7 +258,7 @@ def main():
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
     #
 
-    start_ts = arrow.get().shift(days=-30)
+    start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
     write_to_sheet(sqlite_get_rows_after_ts('db.sqlite', 'water_level', start_ts))
 
     # else:
