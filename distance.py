@@ -282,7 +282,7 @@ def main():
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
 
-    if now.hour in (6, 12, 18) and now.minute < 10:
+    if arrow.get(now).to(TARGET_TIMEZONE).hour in (6, 12, 18) and now.minute < 10:
         start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
         write_to_sheet(sqlite_get_rows_after_ts('db.sqlite', 'water_level', start_ts))
 
