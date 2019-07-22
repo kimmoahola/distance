@@ -1,15 +1,15 @@
-import datetime
-import sqlite3
-import pytz
-
-import RPi.GPIO as GPIO
-import time
 import argparse
+import datetime
 import smtplib
-from email.mime.text import MIMEText
-from collections import Counter
+import sqlite3
+import time
 import warnings
+from email.mime.text import MIMEText
 
+import arrow
+import RPi.GPIO as GPIO
+import pygsheets
+import pytz
 
 REPORT_DISTANCES = [
     {
@@ -196,6 +196,24 @@ def write_to_sqlite(file_name, table_name, ts, water_level):
     conn.close()
 
 
+def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
+    conn = sqlite3.connect(file_name)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        'SELECT ts, water_level FROM %s WHERE ts>? ORDER BY id' % table_name, (start_ts,))
+    sqlite_rows = cursor.fetchall()
+
+    conn.close()
+
+    def datetime_to_utc_string_datetime(ts_str):
+        return arrow.get(ts_str).to('utc').format('YYYY-MM-DDTHH:mm:ssZZ')  # 2016-09-21T08:50:28+00:00
+
+    rows = map(lambda x: {'water_level': x[2], 'ts': datetime_to_utc_string_datetime(x[1])}, sqlite_rows)
+
+    return rows
+
+
 def calc_water_level(distance):
     if distance > -1:
         calibrated = distance + SENSOR_CALIBRATION
@@ -207,6 +225,22 @@ def calc_water_level(distance):
     return calibrated, water_level
 
 
+def write_to_sheet(rows):
+    gc = pygsheets.authorize()
+
+    # Open spreadsheet and then workseet
+    sh = gc.open_by_key('1GFhNxMtoczRYYTJPyR8BH55AbAhsqGaCE9ulSyAx4Ro')
+    wks = sh.worksheet_by_title("Kaivovesi")
+
+    # Update a cell with value (just to let him know values is updated ;) )
+    wks.update_value('A1', "Hey yank this numpy array")
+
+    sheet_rows = list(map(lambda x: [x['ts'], x['water_level']], rows))
+
+    if sheet_rows:
+        wks.update_values('A2', sheet_rows)
+
+
 def main():
 
     parser = argparse.ArgumentParser(description='Read distance')
@@ -214,13 +248,17 @@ def main():
                         help='Email address to send alerts. --address can be given multiple times.')
     args = parser.parse_args()
 
-    distance = read_n_and_take_middle_value(1000)
-    GPIO.cleanup()
-    calibrated, water_level = calc_water_level(distance)
-    write_to_sqlite('db.sqlite', 'water_level', get_now(), water_level)
+    # distance = read_n_and_take_middle_value(1000)
+    # GPIO.cleanup()
+    # calibrated, water_level = calc_water_level(distance)
+    # write_to_sqlite('db.sqlite', 'water_level', get_now(), water_level)
+    #
+    # if args.address:
+    #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
+    #
 
-    if args.address:
-        email(args.address, 'Distance', result_str(distance, calibrated, water_level))
+    start_ts = arrow.get().shift(days=-30)
+    write_to_sheet(sqlite_get_rows_after_ts('db.sqlite', 'water_level', start_ts))
 
     # else:
     #     try:

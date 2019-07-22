@@ -1,0 +1,4 @@
+pytz
+RPi.GPIO
+pygsheets==2.0.1
+arrow
