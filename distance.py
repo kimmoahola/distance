@@ -210,7 +210,7 @@ def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
 
     conn.close()
 
-    rows = map(lambda x: {'water_level': x[2], 'ts': datetime_to_utc_string_datetime(x[1])}, sqlite_rows)
+    rows = map(lambda x: {'water_level': x[1], 'ts': datetime_to_utc_string_datetime(x[0])}, sqlite_rows)
 
     return rows
 
