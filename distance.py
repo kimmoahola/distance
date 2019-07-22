@@ -7,8 +7,8 @@ import warnings
 from decimal import Decimal, ROUND_HALF_UP
 from email.mime.text import MIMEText
 
-import arrow
 import RPi.GPIO as GPIO
+import arrow
 import pygsheets
 import pytz
 
@@ -203,7 +203,7 @@ def write_to_sqlite(file_name, table_name, ts, water_level):
 
     init_sqlite(c, table_name)
 
-    c.execute('INSERT INTO %s (ts, water_level) VALUES (?, ?)' % table_name, (ts, decimal_round(water_level)))
+    c.execute('INSERT INTO %s (ts, water_level) VALUES (?, ?)' % table_name, (ts, str(decimal_round(water_level))))
 
     conn.commit()
     conn.close()
