@@ -257,9 +257,6 @@ def write_to_sheet(rows):
     sh = gc.open_by_key('1GFhNxMtoczRYYTJPyR8BH55AbAhsqGaCE9ulSyAx4Ro')
     wks = sh.worksheet_by_title("Kaivovesi")
 
-    # Update a cell with value (just to let him know values is updated ;) )
-    wks.update_value('A1', "Hey yank this numpy array")
-
     sheet_rows = list(reversed(list(map(lambda x: [x['ts'], x['water_level']], rows))))
 
     if sheet_rows:
