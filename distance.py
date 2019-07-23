@@ -212,23 +212,6 @@ def write_to_sqlite(file_name, table_name, ts, water_level):
     conn.close()
 
 
-def sqlite_get_last_two_water_levels(file_name, table_name):
-    conn = sqlite3.connect(file_name)
-    c = conn.cursor()
-
-    c.execute('SELECT water_level FROM %s ORDER BY id DESC LIMIT 2' % table_name)
-    rows = c.fetchall()
-    conn.close()
-
-    if len(rows) == 2:
-        v2, v1 = rows[0][0], rows[1][0]
-    else:
-        v1 = None
-        v2 = None
-
-    return v1, v2
-
-
 def datetime_to_utc_string_datetime(ts_str):
     return arrow.get(ts_str).to('utc').format('YYYY-MM-DDTHH:mm:ssZZ')  # 2016-09-21T08:50:28+00:00
 
@@ -299,14 +282,9 @@ def main():
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
 
-    v1, v2 = sqlite_get_last_two_water_levels(SQLITE_FILE_NAME, SQLITE_TABLE_NAME)
-
-    if v1 is not None and v2 is not None:
-        change_percentage = (v2 - v1) / abs(v1) * 100
-
-        if change_percentage >= 1:
-            start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
-            write_to_sheet(sqlite_get_rows_after_ts(SQLITE_FILE_NAME, SQLITE_TABLE_NAME, start_ts))
+    if arrow.get(now).to(TARGET_TIMEZONE).hour in (6, 12, 18) and now.minute < 10:
+        start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
+        write_to_sheet(sqlite_get_rows_after_ts(SQLITE_FILE_NAME, SQLITE_TABLE_NAME, start_ts))
 
     # else:
     #     try:
