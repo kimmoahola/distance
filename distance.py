@@ -222,14 +222,13 @@ def sqlite_get_cache_value(file_name, name):
     conn = sqlite3.connect(file_name)
     cursor = conn.cursor()
 
-    cursor.execute(
-        'SELECT value FROM cache WHERE name=?', (name,))
+    cursor.execute('SELECT value FROM cache WHERE name=?', (name,))
     value_row = cursor.fetchone()
 
     conn.close()
 
     if value_row:
-        return Decimal(value_row[0])
+        return float(value_row[0])
     else:
         return None
 
@@ -238,11 +237,8 @@ def sqlite_set_cache_value(file_name, name, value):
     conn = sqlite3.connect(file_name)
     cursor = conn.cursor()
 
-    cursor.execute(
-        'DELETE FROM cache where name=?', (name,))
-
-    cursor.execute(
-        'INSERT INTO cache (name, value) VALUES (?, ?)', (name, str(decimal_round(value))))
+    cursor.execute('DELETE FROM cache where name=?', (name,))
+    cursor.execute('INSERT INTO cache (name, value) VALUES (?, ?)', (name, str(decimal_round(value))))
 
     conn.commit()
     conn.close()
@@ -308,7 +304,7 @@ def write_to_sheet(rows):
     sh = gc.open_by_key('1GFhNxMtoczRYYTJPyR8BH55AbAhsqGaCE9ulSyAx4Ro')
     wks = sh.worksheet_by_title("Kaivovesi")
 
-    sheet_rows = list(reversed(list(map(lambda x: [x['ts'], x['water_level']], rows))))[1000:]
+    sheet_rows = list(reversed(list(map(lambda x: [x['ts'], x['water_level']], rows))))[:1000]
 
     if sheet_rows:
         wks.update_values('A2', sheet_rows)
