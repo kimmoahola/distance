@@ -198,6 +198,13 @@ def init_sqlite(c):
                       water_level DECIMAL(6,2) NOT NULL
                   )""")
 
+    c.execute("""CREATE TABLE IF NOT EXISTS cache
+                      (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          name TEXT NOT NULL,
+                          value DECIMAL(6,2) NOT NULL
+                      )""")
+
 
 def write_to_sqlite(file_name, ts, water_level):
     conn = sqlite3.connect(file_name)
@@ -206,6 +213,35 @@ def write_to_sqlite(file_name, ts, water_level):
     init_sqlite(c)
 
     c.execute('INSERT INTO water_level (ts, water_level) VALUES (?, ?)', (ts, str(decimal_round(water_level))))
+
+    conn.commit()
+    conn.close()
+
+
+def sqlite_get_cache_value(file_name, name):
+    conn = sqlite3.connect(file_name)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        'SELECT ts, water_level FROM cache WHERE name=?', name)
+    value_row = cursor.fetchone()
+
+    conn.close()
+
+    print(value_row)
+
+    if value_row:
+        return value_row[0]
+    else:
+        return None
+
+
+def sqlite_set_cache_value(file_name, name, value):
+    conn = sqlite3.connect(file_name)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        'DELETE FROM cache where name=?; INSERT INTO cache (name, value) VALUES (?, ?)', (name, value))
 
     conn.commit()
     conn.close()
@@ -301,9 +337,13 @@ def main():
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
 
-    if now_arrow.to(TARGET_TIMEZONE).hour in (6, 12, 18) and now.minute < 10:
+    last_sheet_value = sqlite_get_cache_value(SQLITE_FILE_NAME, 'last_sheet_value')
+
+    difference_when_to_update = 1
+    if last_sheet_value is None or abs(last_sheet_value - water_level) >= difference_when_to_update:
         start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
         write_to_sheet(sqlite_get_rows_after_ts(SQLITE_FILE_NAME, start_ts))
+        sqlite_set_cache_value(SQLITE_FILE_NAME, 'last_sheet_value', water_level)
 
     # else:
     #     try:
