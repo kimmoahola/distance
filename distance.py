@@ -228,10 +228,8 @@ def sqlite_get_cache_value(file_name, name):
 
     conn.close()
 
-    print(value_row)
-
     if value_row:
-        return value_row[0]
+        return Decimal(value_row[0])
     else:
         return None
 
