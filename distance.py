@@ -330,6 +330,8 @@ def main():
         rate_per_hour = abs((water_level - last_row[1]) / hours)
         if rate_per_hour <= MAX_RATE_PER_HOUR_CM:
             write_to_sqlite(SQLITE_FILE_NAME, now, water_level)
+        else:
+            return
 
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
