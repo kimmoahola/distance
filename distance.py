@@ -199,13 +199,6 @@ def init_sqlite(c, table_name):
                       water_level DECIMAL(6,2) NOT NULL
                   )""" % table_name)
 
-    c.execute("""CREATE TABLE IF NOT EXISTS cache
-                  (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      name TEXT NOT NULL,
-                      value DECIMAL(6,2) NOT NULL
-                  )""")
-
 
 def write_to_sqlite(file_name, table_name, ts, water_level):
     conn = sqlite3.connect(file_name)
@@ -239,7 +232,7 @@ def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
     cursor = conn.cursor()
 
     cursor.execute(
-        'SELECT ts, water_level FROM %s WHERE ts>? ORDER BY id' % table_name, start_ts)
+        'SELECT ts, water_level FROM %s WHERE ts>? ORDER BY id' % table_name, (start_ts,))
     sqlite_rows = cursor.fetchall()
 
     conn.close()
@@ -247,35 +240,6 @@ def sqlite_get_rows_after_ts(file_name, table_name, start_ts):
     rows = map(lambda x: {'water_level': x[1], 'ts': utc_string_datetime_to_local_string_datetime(x[0])}, sqlite_rows)
 
     return rows
-
-
-def sqlite_get_cache_value(file_name, name):
-    conn = sqlite3.connect(file_name)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        'SELECT ts, water_level FROM cache WHERE name=?', name)
-    value_row = cursor.fetchone()
-
-    conn.close()
-
-    print(value_row)
-
-    if value_row:
-        return value_row[0]
-    else:
-        return None
-
-
-def sqlite_set_cache_value(file_name, name, value):
-    conn = sqlite3.connect(file_name)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        'DELETE FROM cache where name=?; INSERT INTO cache (name, value) VALUES (?, ?)', (name, value))
-
-    conn.commit()
-    conn.close()
 
 
 def calc_water_level(distance):
@@ -318,12 +282,9 @@ def main():
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
 
-    last_sheet_value = sqlite_get_cache_value(SQLITE_FILE_NAME, 'last_sheet_value')
-
-    if last_sheet_value is None or abs(last_sheet_value - water_level) >= 1:
+    if arrow.get(now).to(TARGET_TIMEZONE).hour in (6, 12, 18) and now.minute < 10:
         start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
         write_to_sheet(sqlite_get_rows_after_ts(SQLITE_FILE_NAME, SQLITE_TABLE_NAME, start_ts))
-        sqlite_set_cache_value(SQLITE_FILE_NAME, 'last_sheet_value', water_level)
 
     # else:
     #     try:
