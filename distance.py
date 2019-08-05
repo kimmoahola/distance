@@ -23,7 +23,6 @@ REPORT_DISTANCES = [
     },
 ]
 
-MAX_RATE_PER_HOUR_CM = 5
 SENSOR_FROM_CELLING_CM = 120
 FULL_DISTANCE_FROM_CELLING_CM = 125
 
@@ -274,18 +273,6 @@ def sqlite_get_rows_after_ts(file_name, start_ts):
     return rows
 
 
-def sqlite_get_last_row(file_name):
-    conn = sqlite3.connect(file_name)
-    cursor = conn.cursor()
-
-    cursor.execute('SELECT ts, water_level FROM water_level ORDER BY id DESC LIMIT 1')
-    row = cursor.fetchone()
-
-    conn.close()
-
-    return row
-
-
 def calc_water_level(distance):
     if distance > -1:
         calibrated = distance + SENSOR_CALIBRATION
@@ -322,16 +309,8 @@ def main():
     calibrated, water_level = calc_water_level(distance)
 
     now = get_now()
-    now_arrow = arrow.get(now)
 
-    last_row = sqlite_get_last_row(SQLITE_FILE_NAME)
-    if last_row:
-        hours = (arrow.get(last_row[0]) - now_arrow).total_seconds() / 3600
-        rate_per_hour = abs((water_level - last_row[1]) / hours)
-        if rate_per_hour <= MAX_RATE_PER_HOUR_CM:
-            write_to_sqlite(SQLITE_FILE_NAME, now, water_level)
-        else:
-            return
+    write_to_sqlite(SQLITE_FILE_NAME, now, water_level)
 
     # if args.address:
     #     email(args.address, 'Distance', result_str(distance, calibrated, water_level))
