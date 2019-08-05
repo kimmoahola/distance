@@ -338,7 +338,7 @@ def main():
 
     last_sheet_value = sqlite_get_cache_value(SQLITE_FILE_NAME, 'last_sheet_value')
 
-    difference_when_to_update = 1
+    difference_when_to_update = 2
     if last_sheet_value is None or abs(last_sheet_value - water_level) >= difference_when_to_update:
         start_ts = datetime_to_utc_string_datetime(arrow.get().shift(days=-30))
         write_to_sheet(sqlite_get_rows_after_ts(SQLITE_FILE_NAME, start_ts))
